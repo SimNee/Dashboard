@@ -10,9 +10,16 @@ class UnivusSettingsTabWidget extends StatefulWidget {
 class _UnivusSettingsTabState extends State<UnivusSettingsTabWidget> {
   String userInput;
   String savedTimetable;
+  final nameHolder = TextEditingController();
+
+  clearTextInput() {
+    nameHolder.clear();
+  }
+
   @override
   void initState() {
     super.initState();
+    _read();
   }
 
   @override
@@ -23,14 +30,21 @@ class _UnivusSettingsTabState extends State<UnivusSettingsTabWidget> {
         backgroundColor: Colors.black,
       ),
       body: Container(
-        constraints: BoxConstraints.expand(),
         child: SafeArea(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
+              Text(
+                'Update Timetable',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               Container(
                 padding: EdgeInsets.all(20),
                 child: TextField(
+                  controller: nameHolder,
                   style: TextStyle(
                     color: Colors.black,
                   ),
@@ -54,10 +68,11 @@ class _UnivusSettingsTabState extends State<UnivusSettingsTabWidget> {
                 ),
               ),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: <Widget>[
-                  Padding(
-                    padding: const EdgeInsets.all(5),
+                  Container(
+                    width: 150,
+                    height: 45,
                     child: RaisedButton(
                       color: Colors.orange.shade400,
                       onPressed: () {
@@ -71,15 +86,17 @@ class _UnivusSettingsTabState extends State<UnivusSettingsTabWidget> {
                       ),
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.all(5),
+                  Container(
+                    width: 150,
+                    height: 45,
                     child: RaisedButton(
                       color: Colors.cyan.shade300,
                       onPressed: () {
                         _save();
+                        clearTextInput();
                       },
                       child: Text(
-                        'Save Timetable',
+                        'Save',
                         style: TextStyle(
                           fontSize: 20.0,
                         ),
@@ -88,8 +105,16 @@ class _UnivusSettingsTabState extends State<UnivusSettingsTabWidget> {
                   ),
                 ],
               ),
+              SizedBox(height: 50),
+              Text(
+                'Current Timetable',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               Container(
-                margin: EdgeInsets.all(100.0),
+                margin: EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: Colors.blueGrey.shade50,
                   shape: BoxShape.rectangle,
@@ -120,10 +145,19 @@ class _UnivusSettingsTabState extends State<UnivusSettingsTabWidget> {
     final key = 'my_timetable_key';
     final String value = userInput;
     prefs.setString(key, value);
-    print('saved $value');
-    final readValue = prefs.getString(key) ?? 'No timetable saved.';
+    print('saved: $value');
     setState(() {
-      savedTimetable = readValue;
+      savedTimetable = value;
+    });
+  }
+
+  _read() async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = 'my_timetable_key';
+    final value = prefs.getString(key) ?? 'No timetable saved.';
+    print('read: $value');
+    setState(() {
+      savedTimetable = value;
     });
   }
 
