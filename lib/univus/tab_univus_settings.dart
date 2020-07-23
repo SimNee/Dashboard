@@ -128,7 +128,7 @@ class _UnivusSettingsTabState extends State<UnivusSettingsTabWidget> {
                     savedTimetable ?? 'No timetable saved.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 20.0,
+                      fontSize: 15.0,
                     ),
                   ),
                 ),
@@ -154,7 +154,7 @@ class _UnivusSettingsTabState extends State<UnivusSettingsTabWidget> {
   _read() async {
     final prefs = await SharedPreferences.getInstance();
     final key = 'my_timetable_key';
-    final value = prefs.getString(key) ?? 'No timetable saved.';
+    final value = prefs.getString(key) ?? 'Unable to read timetable.';
     print('read: $value');
     setState(() {
       savedTimetable = value;
