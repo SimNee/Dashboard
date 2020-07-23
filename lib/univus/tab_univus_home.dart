@@ -1,6 +1,12 @@
 import 'package:chatbot/storage_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:intl/intl.dart';
+
+const nusmodURL = 'https://api.nusmods.com/v2';
+const year = '2020-2021';
 
 class UnivusHomeTabWidget extends StatefulWidget {
   @override
@@ -10,12 +16,16 @@ class UnivusHomeTabWidget extends StatefulWidget {
 class _UnivusHomeTabState extends State<UnivusHomeTabWidget> {
   String _userid = '';
   String savedTimetable;
+  String semester;
+  String todayDate;
   List list = new List();
+  List infoList = new List();
 
   @override
   void initState() {
     super.initState();
     _getUserid();
+    _getTodayDate();
     _read();
   }
 
@@ -37,73 +47,129 @@ class _UnivusHomeTabState extends State<UnivusHomeTabWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
-        children: <Widget>[
-          SizedBox(
-            height: 40.0,
-          ),
-          Text(
-            'Hi $_userid,',
-            style: TextStyle(
-              fontSize: 18.0,
-            ),
-          ),
-          Container(
-            margin: EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.blueGrey.shade50,
-              shape: BoxShape.rectangle,
-              borderRadius: BorderRadius.all(
-                Radius.circular(25.0),
+    return SafeArea(
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              'Hi $_userid,',
+              style: TextStyle(
+                fontSize: 18.0,
               ),
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(20),
+//            Container(
+//              margin: EdgeInsets.all(20),
+//              decoration: BoxDecoration(
+//                color: Colors.blueGrey.shade50,
+//                shape: BoxShape.rectangle,
+//                borderRadius: BorderRadius.all(
+//                  Radius.circular(25.0),
+//                ),
+//              ),
+//              child: Padding(
+//                padding: const EdgeInsets.all(20),
+//                child: Text(
+//                  savedTimetable ?? 'No timetable saved.',
+//                  textAlign: TextAlign.center,
+//                  style: TextStyle(
+//                    fontSize: 15.0,
+//                  ),
+//                ),
+//              ),
+//            ),
+            Container(
               child: Text(
-                savedTimetable ?? 'No timetable saved.',
-                textAlign: TextAlign.center,
+                todayDate ?? "Date",
+                textAlign: TextAlign.left,
                 style: TextStyle(
-                  fontSize: 15.0,
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
-          ),
-          SizedBox(
-            height: 800,
-            child: ListView.builder(
-              itemCount: list.length,
-              itemBuilder: (context, index) {
-                return new Text(list[index].toString());
-              },
+            Text(
+              semester ?? "Error",
             ),
-          ),
-        ],
+            SizedBox(
+              width:
+                  MediaQuery.of(context).size.width * .8, // 80% of the screen
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: list.length,
+                separatorBuilder: (context, index) => Divider(),
+                itemBuilder: (context, index) {
+                  return Ink(
+                    color: Colors.amber,
+                    child: ListTile(
+                      title: Text(
+                        list[index].toString(),
+                        style: TextStyle(
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            SizedBox(
+              height: 30.0,
+            ),
+            SizedBox(
+              width:
+                  MediaQuery.of(context).size.width * .8, // 80% of the screen
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: infoList.length,
+                separatorBuilder: (context, index) => Divider(),
+                itemBuilder: (context, index) {
+                  return Ink(
+                    color: Colors.teal,
+                    child: ListTile(
+                      title: Text(
+                        infoList[index].toString(),
+                        style: TextStyle(
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  _read() async {
+  Future<void> _read() async {
     final prefs = await SharedPreferences.getInstance();
     final key = 'my_timetable_key';
     final value = prefs.getString(key) ?? 'Unable to read timetable.';
     setState(() {
       savedTimetable = value;
     });
-    print('read');
+    print('reading timetable');
     if (savedTimetable != null &&
         savedTimetable != 'No timetable saved.' &&
         savedTimetable != 'Unable to read timetable.') {
-      _processTimetable(savedTimetable);
+      try {
+        await _processTimetable(savedTimetable);
+      } catch (err) {
+        print('Caught error: $err');
+      }
     }
   }
 
-  List<dynamic> _processTimetable(String string) {
+  Future<List<dynamic>> _processTimetable(String string) async {
     String url = string.trim().split("?").sublist(0, 1).first;
     //print(url);
 
-    var semester = url.split("/").sublist(4, 5).first;
-    print('$semester');
+    semester = url.split("/").sublist(4, 5).first;
+    //print('Semester: $semester');
 
     var data = string.split("?").sublist(1, 2).first;
     //print(data);
@@ -117,11 +183,11 @@ class _UnivusHomeTabState extends State<UnivusHomeTabWidget> {
       var moduleSplit = module.split("=");
       var moduleCode = moduleSplit.first;
       var slots = module.split("=").sublist(1, 2).first.split(",");
-      //print('\n$moduleSplit');
+      //print('$moduleSplit');
       moduleInfo.add(moduleCode);
       moduleMap["classNo"] = "$moduleCode";
       //print(moduleMap["classNo"]);
-      //print('  moduleCode: $moduleCode');
+      //print('moduleCode: $moduleCode');
       //print(slots);
 
       for (String slot in slots) {
@@ -146,10 +212,60 @@ class _UnivusHomeTabState extends State<UnivusHomeTabWidget> {
       }
       //print(moduleInfo);
       //list.add(moduleInfo);
-      print(moduleMap);
+      //print(moduleMap);
       list.add(moduleMap);
     }
-    print(list);
+    //print(list);
+    try {
+      await _getModuleData();
+    } catch (err) {
+      print('Caught error: $err');
+    }
     return list;
+  }
+
+  Future<List<dynamic>> _getModuleData() async {
+    for (var item in list) {
+      //print(item);
+      var moduleCode = item["classNo"];
+      //print(moduleCode);
+      Map<String, dynamic> infoMap = {};
+      infoMap["classNo"] = moduleCode;
+      http.Response response =
+          await http.get('$nusmodURL/$year/modules/$moduleCode.json');
+      if (response.statusCode == 200) {
+        int index;
+        if (semester == 'sem-1') {
+          index = 0;
+        } else if (semester == 'sem-2') {
+          index = 1;
+        } else if (semester == 'st-i') {
+          index = 2;
+        } else if (semester == 'st-ii') {
+          index = 3;
+        }
+
+        var data = response.body;
+        //print(data);
+        var examDate = jsonDecode(data)["semesterData"][index]["examDate"];
+        //print(examDate);
+        infoMap["examDate"] = examDate;
+        //print(infoMap);
+        infoList.add(infoMap);
+        var timetable = jsonDecode(data)["semesterData"][index]["timetable"];
+      } else {
+        print(response.statusCode);
+      }
+    }
+    print(infoList);
+    return infoList;
+  }
+
+  void _getTodayDate() {
+    final DateTime now = DateTime.now();
+    final DateFormat formatter = DateFormat('MMM d, y');
+    final String formatted = formatter.format(now);
+    //print(formatted);
+    todayDate = formatted;
   }
 }
